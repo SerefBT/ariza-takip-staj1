@@ -1,0 +1,2 @@
+import dotenv from 'dotenv';import mongoose from 'mongoose';import {fileURLToPath} from 'node:url';import connectDB from '../config/db.js';import {bootstrapAdmin} from '../lib/bootstrap.js';
+dotenv.config({path:fileURLToPath(new URL('../.env',import.meta.url)),quiet:true});try{await connectDB();await bootstrapAdmin();console.log('Yonetici hesabi hazir. Var olan hesaplarin sifreleri degistirilmedi.')}finally{await mongoose.disconnect()}

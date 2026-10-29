@@ -1,0 +1,13 @@
+node_modules/
+**/dist/
+.local/
+.tools/
+.env
+.env.*
+!.env.example
+artifacts/
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/**/build/
+frontend/android/app/src/main/assets/public/
+.openai/

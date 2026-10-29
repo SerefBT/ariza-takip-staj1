@@ -1,0 +1,27 @@
+{
+  "name": "ariza-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "android:sync": "npm run build && cap sync android"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "lucide-react": "1.64.0",
+    "@fontsource/inter": "5.3.0",
+    "@capacitor/core": "8.6.0",
+    "@capacitor/android": "8.6.0",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/status-bar": "8.0.4"
+  },
+  "devDependencies": {
+    "vite": "8.3.5",
+    "@vitejs/plugin-react": "6.1.2",
+    "@capacitor/cli": "8.6.0"
+  }
+}

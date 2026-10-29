@@ -1,0 +1,11 @@
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import mongoose from 'mongoose';
+import connectDB from './config/db.js';
+import { createApp } from './app.js';
+import { bootstrapAdmin } from './lib/bootstrap.js';
+dotenv.config({ path: fileURLToPath(new URL('.env', import.meta.url)), quiet: true });
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) throw new Error('Güçlü bir JWT_SECRET gerekli. Önce kurulum dosyasını çalıştırın.');
+await connectDB(); await bootstrapAdmin();
+const server = createApp().listen(Number(process.env.PORT || 5000), '0.0.0.0', () => console.log(`Sunucu ${process.env.PORT || 5000} portunda aktif edildi.`));
+for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => server.close(async () => { await mongoose.disconnect(); process.exit(0); }));

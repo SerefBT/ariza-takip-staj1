@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+.git
+.local
+.tools
+artifacts
+**/.env
+**/.env.*
+!**/.env.example
+frontend/android
+frontend/dist

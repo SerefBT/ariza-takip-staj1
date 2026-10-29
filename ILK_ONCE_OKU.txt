@@ -1,0 +1,13 @@
+ARIZA TAKİP — STAJ 1
+
+1. Bilgisayarda açmak: ArizaTakip-Baslat.cmd dosyasına çift tıkla.
+2. Web: http://localhost:5000
+3. Yönetici hesabı: .local/KULLANICI_BILGILERI.txt dosyasında.
+4. APK: artifacts/ArizaTakip-1.0.0.apk dosyasını Android telefona aktar ve kur.
+5. Geçici internet: https://pockets-memories-ultra-physics.trycloudflare.com
+   Bilgisayar ve tünel açık kaldığı sürece çalışır. Kalıcı yayın ayrıca kurulacak.
+6. Yönetici: Personel Ekle bölümünden teknisyen hesabı aç, arıza oluştur ve ata.
+7. Teknisyen: Yalnızca kendisine atanan arızaları görür.
+
+Ayrıntılı açıklamalar README.md ve docs klasöründedir.
+Projenin tamamı bu ArizaTakip klasöründedir. Unity ve MobilDepo kaynakları değiştirilmedi.
