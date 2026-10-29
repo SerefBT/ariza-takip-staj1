@@ -1,4 +1,4 @@
-param([string]$ServerUrl='http://192.168.1.182:5000')
+param([string]$ServerUrl='https://serafettin-ariza-staj1.onrender.com')
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
 Set-Location $projectRoot
@@ -18,6 +18,8 @@ Push-Location frontend\android
 try { & .\gradlew.bat --no-daemon assembleDebug; if($LASTEXITCODE -ne 0){throw 'APK derlemesi basarisiz.'} } finally { Pop-Location }
 New-Item -ItemType Directory -Path artifacts -Force | Out-Null
 Copy-Item -LiteralPath 'frontend\android\app\build\outputs\apk\debug\app-debug.apk' -Destination 'artifacts\ArizaTakip-1.0.0.apk' -Force
+New-Item -ItemType Directory -Path backend/downloads -Force | Out-Null
+Copy-Item -LiteralPath 'artifacts/ArizaTakip-1.0.0.apk' -Destination 'backend/downloads/ArizaTakip-1.0.0.apk' -Force
 & npm.cmd run build
 if($LASTEXITCODE -ne 0){throw 'Web dagitim derlemesi basarisiz.'}
 Write-Host 'APK hazir: artifacts\ArizaTakip-1.0.0.apk'

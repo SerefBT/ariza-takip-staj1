@@ -1,17 +1,206 @@
-import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import assert from 'node:assert/strict';import mongoose from 'mongoose';import bcrypt from 'bcryptjs';import {chromium} from '@playwright/test';import {createApp} from '../backend/app.js';import User from '../backend/models/User.js';import {root} from './setup.mjs';
-process.env.NODE_ENV='test';process.env.JWT_SECRET=crypto.randomBytes(48).toString('hex');let browser,server;const db='ariza_test_browser_'+crypto.randomUUID().replaceAll('-',''),pass='Tarayici!826',out=path.join(root,'artifacts','kontrol');fs.mkdirSync(out,{recursive:true});let errors=[];
-async function noOverflow(page,label){const result=await page.evaluate(()=>({viewport:innerWidth,width:document.documentElement.scrollWidth}));assert.ok(result.width<=result.viewport+1,label+' yatay tasma '+JSON.stringify(result))}
-async function login(page,name){await page.goto(url);await page.getByLabel('Kullanıcı adı',{exact:true}).fill(name);await page.locator('#login-password').fill(pass);await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();await page.getByRole('heading',{name:/genel bakış/}).waitFor();await page.getByRole('button',{name:'Yenile',exact:true}).waitFor({state:'visible'});await page.waitForFunction(()=>!document.querySelector('.skeleton-card'))}
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import assert from 'node:assert/strict';
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import { chromium } from '@playwright/test';
+import { createApp } from '../backend/app.js';
+import User from '../backend/models/User.js';
+import { root } from './setup.mjs';
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = crypto.randomBytes(48).toString('hex');
+let browser, server;
+const db = 'ariza_test_browser_' + crypto.randomUUID().replaceAll('-', ''),
+  pass = 'Tarayici!826',
+  out = path.join(root, 'artifacts', 'kontrol');
+fs.mkdirSync(out, { recursive: true });
+let errors = [];
+async function noOverflow(page, label) {
+  const result = await page.evaluate(() => ({
+    viewport: innerWidth,
+    width: document.documentElement.scrollWidth,
+  }));
+  assert.ok(result.width <= result.viewport + 1, label + ' yatay tasma ' + JSON.stringify(result));
+}
+async function login(page, name) {
+  await page.goto(url);
+  await page.getByLabel('Kullanıcı adı', { exact: true }).fill(name);
+  await page.locator('#login-password').fill(pass);
+  await page.getByRole('button', { name: 'Giriş Yap', exact: true }).click();
+  await page.getByRole('heading', { name: /genel bakış/ }).waitFor();
+  await page.getByRole('button', { name: 'Yenile', exact: true }).waitFor({ state: 'visible' });
+  await page.waitForFunction(() => !document.querySelector('.skeleton-card'));
+}
 let url;
-try{await mongoose.connect('mongodb://127.0.0.1:27028/'+db);await User.init();await User.create({username:'kontrolyonetici',password:await bcrypt.hash(pass,10),role:'admin',isApproved:true});server=createApp().listen(5006,'127.0.0.1');await new Promise(r=>server.once('listening',r));url='http://127.0.0.1:5006';browser=await chromium.launch({channel:'chrome',headless:true});const context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});await page.goto(url);await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);await page.screenshot({path:path.join(out,'01-giris-masaustu.png'),fullPage:true});for(const w of [320,390,768,1440]){await page.setViewportSize({width:w,height:900});await noOverflow(page,'Giris '+w)}await page.setViewportSize({width:1440,height:1000});await login(page,'kontrolyonetici');await page.getByText('Her şey yolunda. Açık arıza yok.',{exact:true}).waitFor();await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);await page.screenshot({path:path.join(out,'02-bos-panel.png'),fullPage:true});
-await page.getByRole('button',{name:'Personel Ekle',exact:true}).click();let modal=page.getByRole('dialog');await modal.getByLabel('Kullanıcı adı',{exact:false}).fill('kontrolteknisyen');await modal.locator('#staff-password').fill(pass);await modal.getByRole('button',{name:'Personel Ekle',exact:true}).click();await modal.waitFor({state:'hidden'});
-for(const [title,location,priority] of [['Yazıcı ağ bağlantısı kesiliyor','Bilgi İşlem · 2. Kat','kritik'],['Çalışma bilgisayarı açılmıyor','İdari Birim · 1. Kat','yuksek'],['Ekran bağlantısı kontrolü','Toplantı Odası','orta']]){await page.getByRole('button',{name:'Yeni Arıza Ekle',exact:true}).click();modal=page.getByRole('dialog');await modal.getByLabel('Başlık',{exact:false}).fill(title);await modal.getByLabel('Açıklama',{exact:false}).fill('İşlemin kesintiye uğramasına neden olan bağlantı sorununun incelenmesi ve gerekli kontrollerin yapılması gerekiyor.');await modal.getByLabel('Konum',{exact:false}).fill(location);await modal.getByLabel('Öncelik',{exact:true}).selectOption(priority);await modal.getByRole('button',{name:'Arıza Ekle',exact:true}).click();await modal.waitFor({state:'hidden'});}
-await page.locator('.fault-card').filter({hasText:'Yazıcı ağ bağlantısı kesiliyor'}).getByRole('combobox').selectOption({label:'kontrolteknisyen'});await page.locator('.fault-card').filter({hasText:'Yazıcı ağ bağlantısı kesiliyor'}).getByRole('button',{name:'Ata',exact:true}).click();await page.waitForFunction(()=>[...document.querySelectorAll('.card-person')].some(x=>x.textContent.includes('kontrolteknisyen')));
-await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);await page.screenshot({path:path.join(out,'03-yonetici-paneli.png'),fullPage:true});
-await page.getByLabel('Öncelik filtresi').selectOption('kritik');assert.equal(await page.locator('.fault-card').count(),1);await page.getByLabel('Öncelik filtresi').selectOption('all');await page.getByLabel('Arızalarda ara').fill('Toplantı');assert.equal(await page.locator('.fault-card').count(),1);await page.getByLabel('Arızalarda ara').fill('');await page.reload();await page.getByRole('heading',{name:/genel bakış/}).waitFor();await page.waitForFunction(()=>document.querySelectorAll('.fault-card').length===3);
-for(const w of [320,390,768,1440]){await page.setViewportSize({width:w,height:950});await noOverflow(page,'Panel '+w);if(w===390)await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(100);await page.screenshot({path:path.join(out,'04-yonetici-telefon.png'),fullPage:true});await page.getByRole('button',{name:'Yeni Arıza Ekle',exact:true}).click();await noOverflow(page,'Pencere '+w);await page.getByRole('dialog').getByRole('button',{name:'İptal',exact:true}).click()}
-await page.getByRole('button',{name:'Profil menüsü'}).click();await page.locator('.profile-menu').waitFor();await page.getByRole('heading',{name:/genel bakış/}).click();assert.equal(await page.locator('.profile-menu').count(),0);
-await page.locator('.fault-card').filter({hasText:'Ekran bağlantısı kontrolü'}).getByRole('button',{name:'Ayrıntılar',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Kaydı Düzenle',exact:true}).click();modal=page.getByRole('dialog');await modal.getByLabel('Başlık',{exact:false}).fill('Ekran bağlantısı düzeltildi');await modal.getByRole('button',{name:'Değişiklikleri Kaydet',exact:true}).click();await modal.waitFor({state:'hidden'});await page.getByRole('button',{name:'Ekran bağlantısı düzeltildi kaydını sil',exact:true}).click();await page.getByRole('dialog').getByRole('button',{name:'Kaydı Sil',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});assert.equal(await page.locator('.fault-card').count(),2);
-const tc=await browser.newContext({viewport:{width:390,height:844}}),tp=await tc.newPage();tp.on('pageerror',e=>errors.push(e.message));await login(tp,'kontrolteknisyen');await tp.waitForFunction(()=>document.querySelectorAll('.fault-card').length===1);assert.equal(await tp.getByRole('button',{name:'Personel Ekle',exact:true}).count(),0);assert.equal(await tp.locator('.delete-button').count(),0);await tp.getByRole('button',{name:'Devam Ediyor',exact:true}).click();await tp.getByText('Devam ediyor',{exact:true}).first().waitFor();await tp.evaluate(()=>scrollTo(0,0));await tp.waitForTimeout(100);await tp.screenshot({path:path.join(out,'05-teknisyen-telefon.png'),fullPage:true});await tp.getByRole('button',{name:'Tamamlandı',exact:true}).click();await tp.getByText('Henüz size atanmış bir arıza yok',{exact:true}).waitFor();await tp.getByRole('tab',{name:/Tamamlanan Arızalar/}).click();await tp.locator('.fault-card').waitFor();await noOverflow(tp,'Teknisyen tamamlanan');
-await tp.getByRole('button',{name:'Profil menüsü'}).click();await tp.getByRole('button',{name:'Şifre Değiştir',exact:true}).click();await tp.locator('#current-password').fill(pass);await tp.locator('#new-password').fill('Yeni!Tarayici827');await tp.getByRole('button',{name:'Güncelle',exact:true}).click();await tp.getByRole('heading',{name:'Çalışma alanınıza giriş yapın'}).waitFor();assert.equal(await tp.evaluate(()=>localStorage.getItem('ariza_token')),null);
-assert.deepEqual(errors,[]);const report={passed:true,date:new Date().toISOString(),viewports:[320,390,768,1440],checks:['Giris ve oturumun yenilemede korunmasi','Personel olusturma','Ariza olusturma, arama ve oncelik filtresi','Teknisyen atama ve gorev gizliligi','Ariza duzenleme ve onayla silme','Devam ediyor ve tamamlandi akisi','Profil disina tiklayarak kapatma','Sifre degisiminde cikis','Telefon ve masaustunde yatay tasma denetimi','Tarayicida calisma zamani hatasi yok'],screenshots:5};fs.writeFileSync(path.join(out,'tarayici-sonucu.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));}finally{await browser?.close();if(server)await new Promise(r=>server.close(r));if(mongoose.connection.readyState){assert.ok(mongoose.connection.name.startsWith('ariza_test_'));await mongoose.connection.dropDatabase();await mongoose.disconnect()}}
+try {
+  await mongoose.connect('mongodb://127.0.0.1:27028/' + db);
+  await User.init();
+  await User.create({
+    username: 'kontrolyonetici',
+    password: await bcrypt.hash(pass, 10),
+    role: 'admin',
+    isApproved: true,
+  });
+  server = createApp().listen(5006, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  url = 'http://127.0.0.1:5006';
+  browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } }),
+    page = await context.newPage();
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => {
+    if (m.type() === 'error') errors.push(m.text());
+  });
+  await page.goto(url);
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.waitForTimeout(100);
+  await page.screenshot({ path: path.join(out, '01-giris-masaustu.png'), fullPage: true });
+  for (const w of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width: w, height: 900 });
+    await noOverflow(page, 'Giris ' + w);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await login(page, 'kontrolyonetici');
+  await page.getByText('Her şey yolunda. Açık arıza yok.', { exact: true }).waitFor();
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.waitForTimeout(100);
+  await page.screenshot({ path: path.join(out, '02-bos-panel.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Personel Ekle', exact: true }).click();
+  let modal = page.getByRole('dialog');
+  await modal.getByLabel('Kullanıcı adı', { exact: false }).fill('kontrolteknisyen');
+  await modal.locator('#staff-password').fill(pass);
+  await modal.getByRole('button', { name: 'Personel Ekle', exact: true }).click();
+  await modal.waitFor({ state: 'hidden' });
+  for (const [title, location, priority] of [
+    ['Yazıcı ağ bağlantısı kesiliyor', 'Bilgi İşlem · 2. Kat', 'kritik'],
+    ['Çalışma bilgisayarı açılmıyor', 'İdari Birim · 1. Kat', 'yuksek'],
+    ['Ekran bağlantısı kontrolü', 'Toplantı Odası', 'orta'],
+  ]) {
+    await page.getByRole('button', { name: 'Yeni Arıza Ekle', exact: true }).click();
+    modal = page.getByRole('dialog');
+    await modal.getByLabel('Başlık', { exact: false }).fill(title);
+    await modal
+      .getByLabel('Açıklama', { exact: false })
+      .fill(
+        'İşlemin kesintiye uğramasına neden olan bağlantı sorununun incelenmesi ve gerekli kontrollerin yapılması gerekiyor.',
+      );
+    await modal.getByLabel('Konum', { exact: false }).fill(location);
+    await modal.getByLabel('Öncelik', { exact: true }).selectOption(priority);
+    await modal.getByRole('button', { name: 'Arıza Ekle', exact: true }).click();
+    await modal.waitFor({ state: 'hidden' });
+  }
+  await page
+    .locator('.fault-card')
+    .filter({ hasText: 'Yazıcı ağ bağlantısı kesiliyor' })
+    .getByRole('combobox')
+    .selectOption({ label: 'kontrolteknisyen' });
+  await page
+    .locator('.fault-card')
+    .filter({ hasText: 'Yazıcı ağ bağlantısı kesiliyor' })
+    .getByRole('button', { name: 'Ata', exact: true })
+    .click();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('.card-person')].some((x) =>
+      x.textContent.includes('kontrolteknisyen'),
+    ),
+  );
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.waitForTimeout(100);
+  await page.screenshot({ path: path.join(out, '03-yonetici-paneli.png'), fullPage: true });
+  await page.getByLabel('Öncelik filtresi').selectOption('kritik');
+  assert.equal(await page.locator('.fault-card').count(), 1);
+  await page.getByLabel('Öncelik filtresi').selectOption('all');
+  await page.getByLabel('Arızalarda ara').fill('Toplantı');
+  assert.equal(await page.locator('.fault-card').count(), 1);
+  await page.getByLabel('Arızalarda ara').fill('');
+  await page.reload();
+  await page.getByRole('heading', { name: /genel bakış/ }).waitFor();
+  await page.waitForFunction(() => document.querySelectorAll('.fault-card').length === 3);
+  for (const w of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width: w, height: 950 });
+    await noOverflow(page, 'Panel ' + w);
+    if (w === 390) await page.evaluate(() => scrollTo(0, 0));
+    await page.waitForTimeout(100);
+    await page.screenshot({ path: path.join(out, '04-yonetici-telefon.png'), fullPage: true });
+    await page.getByRole('button', { name: 'Yeni Arıza Ekle', exact: true }).click();
+    await noOverflow(page, 'Pencere ' + w);
+    await page.getByRole('dialog').getByRole('button', { name: 'İptal', exact: true }).click();
+  }
+  await page.getByRole('button', { name: 'Profil menüsü' }).click();
+  await page.locator('.profile-menu').waitFor();
+  await page.getByRole('heading', { name: /genel bakış/ }).click();
+  assert.equal(await page.locator('.profile-menu').count(), 0);
+  await page
+    .locator('.fault-card')
+    .filter({ hasText: 'Ekran bağlantısı kontrolü' })
+    .getByRole('button', { name: 'Ayrıntılar', exact: true })
+    .click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Kaydı Düzenle', exact: true })
+    .click();
+  modal = page.getByRole('dialog');
+  await modal.getByLabel('Başlık', { exact: false }).fill('Ekran bağlantısı düzeltildi');
+  await modal.getByRole('button', { name: 'Değişiklikleri Kaydet', exact: true }).click();
+  await modal.waitFor({ state: 'hidden' });
+  await page
+    .getByRole('button', { name: 'Ekran bağlantısı düzeltildi kaydını sil', exact: true })
+    .click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Kaydı Sil', exact: true }).click();
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+  assert.equal(await page.locator('.fault-card').count(), 2);
+  const tc = await browser.newContext({ viewport: { width: 390, height: 844 } }),
+    tp = await tc.newPage();
+  tp.on('pageerror', (e) => errors.push(e.message));
+  await login(tp, 'kontrolteknisyen');
+  await tp.waitForFunction(() => document.querySelectorAll('.fault-card').length === 1);
+  assert.equal(await tp.getByRole('button', { name: 'Personel Ekle', exact: true }).count(), 0);
+  assert.equal(await tp.locator('.delete-button').count(), 0);
+  await tp.getByRole('button', { name: 'Devam Ediyor', exact: true }).click();
+  await tp.getByText('Devam ediyor', { exact: true }).first().waitFor();
+  await tp.evaluate(() => scrollTo(0, 0));
+  await tp.waitForTimeout(100);
+  await tp.screenshot({ path: path.join(out, '05-teknisyen-telefon.png'), fullPage: true });
+  await tp.getByRole('button', { name: 'Tamamlandı', exact: true }).click();
+  await tp.getByText('Henüz size atanmış bir arıza yok', { exact: true }).waitFor();
+  await tp.getByRole('tab', { name: /Tamamlanan Arızalar/ }).click();
+  await tp.locator('.fault-card').waitFor();
+  await noOverflow(tp, 'Teknisyen tamamlanan');
+  await tp.getByRole('button', { name: 'Profil menüsü' }).click();
+  await tp.getByRole('button', { name: 'Şifre Değiştir', exact: true }).click();
+  await tp.locator('#current-password').fill(pass);
+  await tp.locator('#new-password').fill('Yeni!Tarayici827');
+  await tp.getByRole('button', { name: 'Güncelle', exact: true }).click();
+  await tp.getByRole('heading', { name: 'Çalışma alanınıza giriş yapın' }).waitFor();
+  assert.equal(await tp.evaluate(() => localStorage.getItem('ariza_token')), null);
+  assert.deepEqual(errors, []);
+  const report = {
+    passed: true,
+    date: new Date().toISOString(),
+    viewports: [320, 390, 768, 1440],
+    checks: [
+      'Giris ve oturumun yenilemede korunmasi',
+      'Personel olusturma',
+      'Ariza olusturma, arama ve oncelik filtresi',
+      'Teknisyen atama ve gorev gizliligi',
+      'Ariza duzenleme ve onayla silme',
+      'Devam ediyor ve tamamlandi akisi',
+      'Profil disina tiklayarak kapatma',
+      'Sifre degisiminde cikis',
+      'Telefon ve masaustunde yatay tasma denetimi',
+      'Tarayicida calisma zamani hatasi yok',
+    ],
+    screenshots: 5,
+  };
+  fs.writeFileSync(path.join(out, 'tarayici-sonucu.json'), JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(report, null, 2));
+} finally {
+  await browser?.close();
+  if (server) await new Promise((r) => server.close(r));
+  if (mongoose.connection.readyState) {
+    assert.ok(mongoose.connection.name.startsWith('ariza_test_'));
+    await mongoose.connection.dropDatabase();
+    await mongoose.disconnect();
+  }
+}

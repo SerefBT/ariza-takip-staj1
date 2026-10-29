@@ -10,9 +10,13 @@ Bu bilgisayarda **ArizaTakip-Baslat.cmd** dosyasına çift tıkla. Web adresi: h
 
 APK: **artifacts/ArizaTakip-1.0.0.apk**. Android 7.0 ve üzeri; deneme amacıyla debug anahtarıyla imzalanmıştır. Google Play mağaza yayını yapılmamıştır.
 
-Geçici internet önizlemesi: https://pockets-memories-ultra-physics.trycloudflare.com
+Canlı site: **https://serafettin-ariza-staj1.onrender.com**
 
-Bu geçici adres yalnızca bu bilgisayar, uygulama ve Cloudflare tüneli çalışırken kullanılabilir. Tünel yeniden kurulursa adres değişir. Kalıcı internet yayını Render ve Atlas hesaplarına kurulur. Henüz kalıcı yayın tamamlanmış kabul edilmemelidir.
+Telefondan APK indir: **https://serafettin-ariza-staj1.onrender.com/indir/android**
+
+Kalıcı ücretsiz Render + Atlas kurulumu tamamlandı. İnternet sitesi ve APK aynı arizatakip_staj1 veritabanını kullanır; bilgisayarın açık kalması gerekmez. Canlı yönetici hesabı **.local/CANLI_KULLANICI_BILGILERI.txt** dosyasındadır. Bilgisayardaki ayrı yerel sürümün hesabı farklıdır. Ücretsiz Render hizmeti boşta kaldığında uykuya geçebilir; ilk açılış yaklaşık 50 saniye veya daha uzun sürebilir.
+
+Kaynak depo özeldir: https://github.com/SerefBT/ariza-takip-staj1
 
 ## Roller
 

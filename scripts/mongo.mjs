@@ -1,4 +1,60 @@
-import fs from 'node:fs';import path from 'node:path';import net from 'node:net';import {spawn} from 'node:child_process';import { MongoBinary } from 'mongodb-memory-server-core';import {root} from './setup.mjs';
-export const mongoPort=27028;
-export function portOpen(port){return new Promise(resolve=>{const s=net.connect(port,'127.0.0.1');s.setTimeout(600);s.once('connect',()=>{s.destroy();resolve(true)});s.once('error',()=>resolve(false));s.once('timeout',()=>{s.destroy();resolve(false)})})}
-export async function ensureMongo(){if(await portOpen(mongoPort))return null;const db=path.join(root,'.local','mongodb'),downloadDir=path.join(root,'.tools','mongodb');fs.mkdirSync(db,{recursive:true});fs.mkdirSync(downloadDir,{recursive:true});console.log('Yerel MongoDB hazirlaniyor (ilk kurulumda indirme yapilir)...');const binary=await MongoBinary.getPath({version:'8.0.16',downloadDir});const mongo=spawn(binary,['--dbpath',db,'--port',String(mongoPort),'--bind_ip','127.0.0.1','--logpath',path.join(root,'.local','mongodb.log'),'--logappend'],{windowsHide:true,stdio:'ignore'});let error;mongo.once('error',e=>error=e);for(let i=0;i<100;i++){if(error)throw error;if(mongo.exitCode!==null)throw Error('MongoDB baslatilamadi. .local/mongodb.log dosyasini kontrol edin.');if(await portOpen(mongoPort)){console.log('MongoDB hazir.');return mongo}await new Promise(r=>setTimeout(r,300))}mongo.kill();throw Error('MongoDB baslatma suresi asildi.')}
+import fs from 'node:fs';
+import path from 'node:path';
+import net from 'node:net';
+import { spawn } from 'node:child_process';
+import { MongoBinary } from 'mongodb-memory-server-core';
+import { root } from './setup.mjs';
+export const mongoPort = 27028;
+export function portOpen(port) {
+  return new Promise((resolve) => {
+    const s = net.connect(port, '127.0.0.1');
+    s.setTimeout(600);
+    s.once('connect', () => {
+      s.destroy();
+      resolve(true);
+    });
+    s.once('error', () => resolve(false));
+    s.once('timeout', () => {
+      s.destroy();
+      resolve(false);
+    });
+  });
+}
+export async function ensureMongo() {
+  if (await portOpen(mongoPort)) return null;
+  const db = path.join(root, '.local', 'mongodb'),
+    downloadDir = path.join(root, '.tools', 'mongodb');
+  fs.mkdirSync(db, { recursive: true });
+  fs.mkdirSync(downloadDir, { recursive: true });
+  console.log('Yerel MongoDB hazirlaniyor (ilk kurulumda indirme yapilir)...');
+  const binary = await MongoBinary.getPath({ version: '8.0.16', downloadDir });
+  const mongo = spawn(
+    binary,
+    [
+      '--dbpath',
+      db,
+      '--port',
+      String(mongoPort),
+      '--bind_ip',
+      '127.0.0.1',
+      '--logpath',
+      path.join(root, '.local', 'mongodb.log'),
+      '--logappend',
+    ],
+    { windowsHide: true, stdio: 'ignore' },
+  );
+  let error;
+  mongo.once('error', (e) => (error = e));
+  for (let i = 0; i < 100; i++) {
+    if (error) throw error;
+    if (mongo.exitCode !== null)
+      throw Error('MongoDB baslatilamadi. .local/mongodb.log dosyasini kontrol edin.');
+    if (await portOpen(mongoPort)) {
+      console.log('MongoDB hazir.');
+      return mongo;
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  mongo.kill();
+  throw Error('MongoDB baslatma suresi asildi.');
+}

@@ -1,5 +1,15 @@
 # Ücretsiz kalıcı internet yayını
 
+29.10.2026 tarihinde tamamlandı. Site: https://serafettin-ariza-staj1.onrender.com
+
+Render: serafettin-ariza-staj1, Frankfurt, Node.js, $0/ay Free. Atlas: mevcut FREE Cluster1 üzerinde ayrı arizatakip_staj1 veritabanı ve yalnızca bu veritabanında readWrite yetkili arizatakip_staj1_app kullanıcısı. Kaynak depo: SerefBT/ariza-takip-staj1, Private.
+
+Canlı yönetici bilgileri .local/CANLI_KULLANICI_BILGILERI.txt dosyasında saklanır; Git deposuna gönderilmez. HTTPS giriş, arıza kaydı, atama ve durum değişiklikleri canlı ortamda doğrulandı. Deneme kayıtları temizlendi. APK indirme: /indir/android.
+
+Mevcut Atlas projesinin önceden tanımlanmış 0.0.0.0/0 IP kuralı kullanıldı; diğer uygulamaları etkileyebileceği için mevcut ağ kuralları değiştirilmedi. Yeni veritabanı kullanıcısı diğer veritabanlarına erişemez.
+
+Aşağıdaki adımlar yeniden kurulum içindir.
+
 Web ve Android aynı Express API ve MongoDB veritabanını kullanır. Render web arayüzünü de sunar; ayrıca ön yüz barındırma hesabı gerekmez. Kaynakların özel bir Git deposundan Render'a bağlanması önerilir. Hesap bağlantısı tamamlanmadan hizmet oluşturulduğu varsayılmamalıdır.
 
 ## MongoDB Atlas

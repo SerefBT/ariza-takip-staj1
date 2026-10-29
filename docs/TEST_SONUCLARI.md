@@ -14,7 +14,10 @@
 - Android APK: Gradle assembleDebug başarılı, APK Signature Scheme v2 doğrulandı.
 - Android hedef SDK: 36; en düşük SDK: 24 (Android 7.0).
 - Fiziksel Android cihaz/emülatör testi: yapılmadı; bağlı cihaz ve hazır sanal cihaz bulunmadı.
-- Kalıcı Render/Atlas yayını: hesap bağlantısı ve canlı kurulum aşamasında; henüz tamamlanmadı.
+- Kalıcı Render/Atlas yayını: tamamlandı. /api/health ve sayfa 200 yanıtı veriyor.
+- Canlı HTTPS yönetici girişi, arıza oluşturma, teknisyen atama, rol sınırı ve durum güncellemeleri: başarılı.
+- Canlı testte oluşturulan personel ve arıza kayıtları: temizlendi.
+- Canlı kanıtlar: artifacts/kontrol/canli-yayin-sonucu.json ve 07/08/09 numaralı ekran görüntüleri.
 
 Tarayıcı denemeleri ayrı ariza_test_browser_* veritabanında yapıldı; test sonunda temizlendi. API testleri de ayrı veritabanını temizledi. Ekran görüntülerindeki örnek kayıtlar yalnızca bu testlerden gelir ve gerçek kullanım ekranında bulunmaz.
 

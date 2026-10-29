@@ -1,21 +1,345 @@
-import {test,before,after} from 'node:test';import assert from 'node:assert/strict';import mongoose from 'mongoose';import bcrypt from 'bcryptjs';import crypto from 'node:crypto';import {createApp} from '../app.js';import User from '../models/User.js';import Fault from '../models/Fault.js';
-process.env.NODE_ENV='test';process.env.JWT_SECRET=crypto.randomBytes(48).toString('hex');
-let server,base,admin,t1,t2,fault,unassigned;const pass='Test!Seans826';const db='ariza_test_'+crypto.randomUUID().replaceAll('-','');
-async function request(route,{token,body,method='GET',headers={}}={}){const r=await fetch(base+'/api'+route,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{}),...headers},...(body?{body:JSON.stringify(body)}:{})});return{status:r.status,data:await r.json()}}
-async function login(username,password=pass){const r=await request('/auth/login',{method:'POST',body:{username,password}});assert.equal(r.status,200);return r.data}
-function safe(data){assert.doesNotMatch(JSON.stringify(data),/"password"|"tokenVersion"|"\$2[aby]\$/)}
-before(async()=>{await mongoose.connect('mongodb://127.0.0.1:27028/'+db);await User.init();await User.create({username:'testadmin',password:await bcrypt.hash(pass,10),role:'admin',isApproved:true});server=createApp().listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));base='http://127.0.0.1:'+server.address().port;admin=await login('testadmin')});
-after(async()=>{await new Promise(r=>server?.close(r));assert.ok(mongoose.connection.name.startsWith('ariza_test_'));await mongoose.connection.dropDatabase();await mongoose.disconnect()});
-test('Oturumsuz ve bozuk belirtecli istekler reddedilir',async()=>{assert.equal((await request('/faults')).status,401);assert.equal((await request('/auth/me',{token:'broken'})).status,401);assert.equal((await request('/auth/login',{method:'POST',body:{username:'testadmin',password:'yanlis'}})).status,400)});
-test('Yonetici personel olusturur; sifre ve belirtec surumu yanita cikmaz',async()=>{for(const name of ['teknisyen1','teknisyen2']){const r=await request('/auth/admin/users',{token:admin.token,method:'POST',body:{username:name,password:pass,role:'teknisyen'}});assert.equal(r.status,201);safe(r.data)}t1=await login('teknisyen1');t2=await login('teknisyen2');safe(t1.user);assert.equal((await request('/auth/admin/users',{token:admin.token,method:'POST',body:{username:'teknisyen1',password:pass}})).status,409);assert.equal((await request('/auth/admin/users',{token:t1.token,method:'POST',body:{username:'yetkisiz',password:pass}})).status,403)});
-test('Onaysiz hesap giris yapamaz ve atama listesine girmez',async()=>{await User.create({username:'onaysiz',password:await bcrypt.hash(pass,10),role:'teknisyen',isApproved:false});assert.equal((await request('/auth/login',{method:'POST',body:{username:'onaysiz',password:pass}})).status,403);const r=await request('/auth/technicians',{token:t1.token});assert.equal(r.data.length,2);safe(r.data);assert.ok(r.data.every(x=>Object.keys(x).sort().join(',')==='_id,username'))});
-test('Ariza gercek veritabanina kaydolur; gonderilen sahte olusturan ve durum yok sayilir',async()=>{const r=await request('/faults',{token:admin.token,method:'POST',body:{title:'Yazici baglantisi',description:'Yazici ag uzerinden yanit vermiyor.',location:'Bilgi Islem',priority:'kritik',createdBy:t1.user.id,status:'tamamlandi'}});assert.equal(r.status,201);fault=r.data;assert.equal(fault.status,'beklemede');assert.equal(fault.createdBy._id,admin.user.id);assert.equal(fault.assignedTo,null);safe(fault);assert.ok(await Fault.exists({_id:fault._id}));assert.equal((await request('/faults',{token:t1.token})).data.length,0)});
-test('Teknisyen kendi actigi atanmamis kaydi goremez; yonetici gorur',async()=>{const r=await request('/faults',{token:t1.token,method:'POST',body:{title:'Ekran arizasi',description:'Goruntu kablosu denetlenmeli.',location:'Kat 2',priority:'orta'}});assert.equal(r.status,201);unassigned=r.data;assert.equal((await request('/faults',{token:t1.token})).data.length,0);assert.equal((await request('/faults',{token:admin.token})).data.length,2)});
-test('Atamadan sonra yalnizca gorevli teknisyen kaydi gorur',async()=>{const r=await request('/faults/'+fault._id,{token:admin.token,method:'PUT',body:{assignedTo:t1.user.id}});assert.equal(r.status,200);assert.equal(r.data.assignedTo.username,'teknisyen1');const one=await request('/faults',{token:t1.token}),two=await request('/faults',{token:t2.token});assert.equal(one.data.length,1);assert.equal(one.data[0]._id,fault._id);assert.equal(two.data.length,0);safe(one.data)});
-test('Teknisyen yetkiyi asamaz: diger gorev, kendine atama, baslik ve silme engellenir',async()=>{for(const body of [{status:'tamamlandi'},{assignedTo:t2.user.id}])assert.equal((await request('/faults/'+fault._id,{token:t2.token,method:'PUT',body})).status,403);for(const body of [{title:'Degistirildi'},{assignedTo:t2.user.id},{status:'tamamlandi',priority:'dusuk'}])assert.equal((await request('/faults/'+fault._id,{token:t1.token,method:'PUT',body})).status,403);assert.equal((await request('/faults/'+fault._id,{token:t1.token,method:'DELETE'})).status,403);assert.equal((await Fault.findById(fault._id)).title,'Yazici baglantisi')});
-test('Atanan teknisyen beklemede-devam-tamamlandi akisina uyar',async()=>{for(const status of ['devam-ediyor','tamamlandi']){const r=await request('/faults/'+fault._id,{token:t1.token,method:'PUT',body:{status}});assert.equal(r.status,200);assert.equal(r.data.status,status);assert.ok(new Date(r.data.updatedAt)>=new Date(r.data.createdAt))}});
-test('Yonetici arizayi duzenler ve atamayi kaldirabilir',async()=>{const r=await request('/faults/'+fault._id,{token:admin.token,method:'PUT',body:{title:'Yazici sorunu cozuldu',description:'Ag kablosu degistirildi.',priority:'dusuk',location:'Bilgi Islem Odasi',assignedTo:null}});assert.equal(r.status,200);assert.equal(r.data.priority,'dusuk');assert.equal((await request('/faults',{token:t1.token})).data.length,0)});
-test('Gecersiz kimlik, alan, rol, oncelik ve buyuk metin denetlenir',async()=>{assert.equal((await request('/faults/not-an-id',{token:admin.token,method:'DELETE'})).status,400);for(const body of [{title:'',description:'Yeterli aciklama',location:'Kat 1'},{title:'Kayit',description:'Yeterli aciklama',location:'Kat 1',priority:'acil'},{title:'A'.repeat(161),description:'Yeterli aciklama',location:'Kat 1'}])assert.equal((await request('/faults',{token:admin.token,method:'POST',body})).status,400);assert.equal((await request('/faults/'+fault._id,{token:admin.token,method:'PUT',body:{assignedTo:admin.user.id}})).status,400);assert.equal((await request('/faults/'+fault._id,{token:admin.token,method:'PUT',body:{status:'bilinmiyor'}})).status,400);assert.equal((await request('/auth/admin/users',{token:admin.token,method:'POST',body:{username:'yeni',password:'kisa'}})).status,400);assert.equal((await request('/auth/admin/users',{token:admin.token,method:'POST',body:{username:'yeni',password:pass,role:'superadmin'}})).status,400)});
-test('Sifre degisimi eski tum oturumlari iptal eder',async()=>{const second=await login('teknisyen1');assert.equal((await request('/auth/update-password',{token:t1.token,method:'PUT',body:{currentPassword:'yanlis',newPassword:'Yeni!Sifre827'}})).status,400);assert.equal((await request('/auth/update-password',{token:t1.token,method:'PUT',body:{currentPassword:pass,newPassword:'Yeni!Sifre827'}})).status,200);for(const token of [t1.token,second.token])assert.equal((await request('/auth/me',{token})).status,401);assert.equal((await request('/auth/login',{method:'POST',body:{username:'teknisyen1',password:pass}})).status,400);t1=await login('teknisyen1','Yeni!Sifre827');safe((await request('/auth/me',{token:t1.token})).data)});
-test('CORS, saglik denetimi, API 404 ve SPA sunumu dogrudur',async()=>{assert.equal((await request('/health')).status,200);assert.equal((await request('/missing')).status,404);assert.equal((await request('/health',{headers:{Origin:'https://izinsiz.example'}})).status,403);const allowed=await fetch(base+'/api/health',{headers:{Origin:'http://localhost:5173'}});assert.equal(allowed.headers.get('access-control-allow-origin'),'http://localhost:5173');const spa=await fetch(base+'/');assert.equal(spa.status,200);assert.match(spa.headers.get('content-type'),/html/);assert.match(await spa.text(),/Arıza Takip/)});
-test('Yonetici silebilir; silinen ve olmayan kayitlar dogru doner',async()=>{assert.equal((await request('/faults/'+fault._id,{token:admin.token,method:'DELETE'})).status,200);assert.equal((await request('/faults/'+fault._id,{token:admin.token,method:'DELETE'})).status,404);assert.equal((await request('/faults/'+unassigned._id,{token:admin.token,method:'DELETE'})).status,200);assert.equal((await request('/faults',{token:admin.token})).data.length,0)});
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import crypto from 'node:crypto';
+import { createApp } from '../app.js';
+import User from '../models/User.js';
+import Fault from '../models/Fault.js';
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = crypto.randomBytes(48).toString('hex');
+let server, base, admin, t1, t2, fault, unassigned;
+const pass = 'Test!Seans826';
+const db = 'ariza_test_' + crypto.randomUUID().replaceAll('-', '');
+async function request(route, { token, body, method = 'GET', headers = {} } = {}) {
+  const r = await fetch(base + '/api' + route, {
+    method,
+    headers: {
+      ...(body ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...headers,
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  return { status: r.status, data: await r.json() };
+}
+async function login(username, password = pass) {
+  const r = await request('/auth/login', { method: 'POST', body: { username, password } });
+  assert.equal(r.status, 200);
+  return r.data;
+}
+function safe(data) {
+  assert.doesNotMatch(JSON.stringify(data), /"password"|"tokenVersion"|"\$2[aby]\$/);
+}
+before(async () => {
+  await mongoose.connect('mongodb://127.0.0.1:27028/' + db);
+  await User.init();
+  await User.create({
+    username: 'testadmin',
+    password: await bcrypt.hash(pass, 10),
+    role: 'admin',
+    isApproved: true,
+  });
+  server = createApp().listen(0, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  base = 'http://127.0.0.1:' + server.address().port;
+  admin = await login('testadmin');
+});
+after(async () => {
+  await new Promise((r) => server?.close(r));
+  assert.ok(mongoose.connection.name.startsWith('ariza_test_'));
+  await mongoose.connection.dropDatabase();
+  await mongoose.disconnect();
+});
+test('Oturumsuz ve bozuk belirtecli istekler reddedilir', async () => {
+  assert.equal((await request('/faults')).status, 401);
+  assert.equal((await request('/auth/me', { token: 'broken' })).status, 401);
+  assert.equal(
+    (
+      await request('/auth/login', {
+        method: 'POST',
+        body: { username: 'testadmin', password: 'yanlis' },
+      })
+    ).status,
+    400,
+  );
+});
+test('Yonetici personel olusturur; sifre ve belirtec surumu yanita cikmaz', async () => {
+  for (const name of ['teknisyen1', 'teknisyen2']) {
+    const r = await request('/auth/admin/users', {
+      token: admin.token,
+      method: 'POST',
+      body: { username: name, password: pass, role: 'teknisyen' },
+    });
+    assert.equal(r.status, 201);
+    safe(r.data);
+  }
+  t1 = await login('teknisyen1');
+  t2 = await login('teknisyen2');
+  safe(t1.user);
+  assert.equal(
+    (
+      await request('/auth/admin/users', {
+        token: admin.token,
+        method: 'POST',
+        body: { username: 'teknisyen1', password: pass },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await request('/auth/admin/users', {
+        token: t1.token,
+        method: 'POST',
+        body: { username: 'yetkisiz', password: pass },
+      })
+    ).status,
+    403,
+  );
+});
+test('Onaysiz hesap giris yapamaz ve atama listesine girmez', async () => {
+  await User.create({
+    username: 'onaysiz',
+    password: await bcrypt.hash(pass, 10),
+    role: 'teknisyen',
+    isApproved: false,
+  });
+  assert.equal(
+    (
+      await request('/auth/login', {
+        method: 'POST',
+        body: { username: 'onaysiz', password: pass },
+      })
+    ).status,
+    403,
+  );
+  const r = await request('/auth/technicians', { token: t1.token });
+  assert.equal(r.data.length, 2);
+  safe(r.data);
+  assert.ok(r.data.every((x) => Object.keys(x).sort().join(',') === '_id,username'));
+});
+test('Ariza gercek veritabanina kaydolur; gonderilen sahte olusturan ve durum yok sayilir', async () => {
+  const r = await request('/faults', {
+    token: admin.token,
+    method: 'POST',
+    body: {
+      title: 'Yazici baglantisi',
+      description: 'Yazici ag uzerinden yanit vermiyor.',
+      location: 'Bilgi Islem',
+      priority: 'kritik',
+      createdBy: t1.user.id,
+      status: 'tamamlandi',
+    },
+  });
+  assert.equal(r.status, 201);
+  fault = r.data;
+  assert.equal(fault.status, 'beklemede');
+  assert.equal(fault.createdBy._id, admin.user.id);
+  assert.equal(fault.assignedTo, null);
+  safe(fault);
+  assert.ok(await Fault.exists({ _id: fault._id }));
+  assert.equal((await request('/faults', { token: t1.token })).data.length, 0);
+});
+test('Teknisyen kendi actigi atanmamis kaydi goremez; yonetici gorur', async () => {
+  const r = await request('/faults', {
+    token: t1.token,
+    method: 'POST',
+    body: {
+      title: 'Ekran arizasi',
+      description: 'Goruntu kablosu denetlenmeli.',
+      location: 'Kat 2',
+      priority: 'orta',
+    },
+  });
+  assert.equal(r.status, 201);
+  unassigned = r.data;
+  assert.equal((await request('/faults', { token: t1.token })).data.length, 0);
+  assert.equal((await request('/faults', { token: admin.token })).data.length, 2);
+});
+test('Atamadan sonra yalnizca gorevli teknisyen kaydi gorur', async () => {
+  const r = await request('/faults/' + fault._id, {
+    token: admin.token,
+    method: 'PUT',
+    body: { assignedTo: t1.user.id },
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.assignedTo.username, 'teknisyen1');
+  const one = await request('/faults', { token: t1.token }),
+    two = await request('/faults', { token: t2.token });
+  assert.equal(one.data.length, 1);
+  assert.equal(one.data[0]._id, fault._id);
+  assert.equal(two.data.length, 0);
+  safe(one.data);
+});
+test('Teknisyen yetkiyi asamaz: diger gorev, kendine atama, baslik ve silme engellenir', async () => {
+  for (const body of [{ status: 'tamamlandi' }, { assignedTo: t2.user.id }])
+    assert.equal(
+      (await request('/faults/' + fault._id, { token: t2.token, method: 'PUT', body })).status,
+      403,
+    );
+  for (const body of [
+    { title: 'Degistirildi' },
+    { assignedTo: t2.user.id },
+    { status: 'tamamlandi', priority: 'dusuk' },
+  ])
+    assert.equal(
+      (await request('/faults/' + fault._id, { token: t1.token, method: 'PUT', body })).status,
+      403,
+    );
+  assert.equal(
+    (await request('/faults/' + fault._id, { token: t1.token, method: 'DELETE' })).status,
+    403,
+  );
+  assert.equal((await Fault.findById(fault._id)).title, 'Yazici baglantisi');
+});
+test('Atanan teknisyen beklemede-devam-tamamlandi akisina uyar', async () => {
+  for (const status of ['devam-ediyor', 'tamamlandi']) {
+    const r = await request('/faults/' + fault._id, {
+      token: t1.token,
+      method: 'PUT',
+      body: { status },
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.data.status, status);
+    assert.ok(new Date(r.data.updatedAt) >= new Date(r.data.createdAt));
+  }
+});
+test('Yonetici arizayi duzenler ve atamayi kaldirabilir', async () => {
+  const r = await request('/faults/' + fault._id, {
+    token: admin.token,
+    method: 'PUT',
+    body: {
+      title: 'Yazici sorunu cozuldu',
+      description: 'Ag kablosu degistirildi.',
+      priority: 'dusuk',
+      location: 'Bilgi Islem Odasi',
+      assignedTo: null,
+    },
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.data.priority, 'dusuk');
+  assert.equal((await request('/faults', { token: t1.token })).data.length, 0);
+});
+test('Gecersiz kimlik, alan, rol, oncelik ve buyuk metin denetlenir', async () => {
+  assert.equal(
+    (await request('/faults/not-an-id', { token: admin.token, method: 'DELETE' })).status,
+    400,
+  );
+  for (const body of [
+    { title: '', description: 'Yeterli aciklama', location: 'Kat 1' },
+    { title: 'Kayit', description: 'Yeterli aciklama', location: 'Kat 1', priority: 'acil' },
+    { title: 'A'.repeat(161), description: 'Yeterli aciklama', location: 'Kat 1' },
+  ])
+    assert.equal(
+      (await request('/faults', { token: admin.token, method: 'POST', body })).status,
+      400,
+    );
+  assert.equal(
+    (
+      await request('/faults/' + fault._id, {
+        token: admin.token,
+        method: 'PUT',
+        body: { assignedTo: admin.user.id },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request('/faults/' + fault._id, {
+        token: admin.token,
+        method: 'PUT',
+        body: { status: 'bilinmiyor' },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request('/auth/admin/users', {
+        token: admin.token,
+        method: 'POST',
+        body: { username: 'yeni', password: 'kisa' },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request('/auth/admin/users', {
+        token: admin.token,
+        method: 'POST',
+        body: { username: 'yeni', password: pass, role: 'superadmin' },
+      })
+    ).status,
+    400,
+  );
+});
+test('Sifre degisimi eski tum oturumlari iptal eder', async () => {
+  const second = await login('teknisyen1');
+  assert.equal(
+    (
+      await request('/auth/update-password', {
+        token: t1.token,
+        method: 'PUT',
+        body: { currentPassword: 'yanlis', newPassword: 'Yeni!Sifre827' },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request('/auth/update-password', {
+        token: t1.token,
+        method: 'PUT',
+        body: { currentPassword: pass, newPassword: 'Yeni!Sifre827' },
+      })
+    ).status,
+    200,
+  );
+  for (const token of [t1.token, second.token])
+    assert.equal((await request('/auth/me', { token })).status, 401);
+  assert.equal(
+    (
+      await request('/auth/login', {
+        method: 'POST',
+        body: { username: 'teknisyen1', password: pass },
+      })
+    ).status,
+    400,
+  );
+  t1 = await login('teknisyen1', 'Yeni!Sifre827');
+  safe((await request('/auth/me', { token: t1.token })).data);
+});
+test('CORS, saglik denetimi, API 404 ve SPA sunumu dogrudur', async () => {
+  assert.equal((await request('/health')).status, 200);
+  assert.equal((await request('/missing')).status, 404);
+  assert.equal(
+    (await request('/health', { headers: { Origin: 'https://izinsiz.example' } })).status,
+    403,
+  );
+  const allowed = await fetch(base + '/api/health', {
+    headers: { Origin: 'http://localhost:5173' },
+  });
+  assert.equal(allowed.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+  const spa = await fetch(base + '/');
+  assert.equal(spa.status, 200);
+  assert.match(spa.headers.get('content-type'), /html/);
+  assert.match(await spa.text(), /Arıza Takip/);
+});
+test('Yonetici silebilir; silinen ve olmayan kayitlar dogru doner', async () => {
+  assert.equal(
+    (await request('/faults/' + fault._id, { token: admin.token, method: 'DELETE' })).status,
+    200,
+  );
+  assert.equal(
+    (await request('/faults/' + fault._id, { token: admin.token, method: 'DELETE' })).status,
+    404,
+  );
+  assert.equal(
+    (await request('/faults/' + unassigned._id, { token: admin.token, method: 'DELETE' })).status,
+    200,
+  );
+  assert.equal((await request('/faults', { token: admin.token })).data.length, 0);
+});

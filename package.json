@@ -15,6 +15,7 @@
     "android:sync": "npm run android:sync --workspace frontend"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1"
+    "@playwright/test": "1.64.1",
+    "prettier": "3.9.10"
   }
 }

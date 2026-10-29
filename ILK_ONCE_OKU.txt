@@ -1,13 +1,21 @@
 ARIZA TAKİP — STAJ 1
 
-1. Bilgisayarda açmak: ArizaTakip-Baslat.cmd dosyasına çift tıkla.
-2. Web: http://localhost:5000
-3. Yönetici hesabı: .local/KULLANICI_BILGILERI.txt dosyasında.
-4. APK: artifacts/ArizaTakip-1.0.0.apk dosyasını Android telefona aktar ve kur.
-5. Geçici internet: https://pockets-memories-ultra-physics.trycloudflare.com
-   Bilgisayar ve tünel açık kaldığı sürece çalışır. Kalıcı yayın ayrıca kurulacak.
-6. Yönetici: Personel Ekle bölümünden teknisyen hesabı aç, arıza oluştur ve ata.
-7. Teknisyen: Yalnızca kendisine atanan arızaları görür.
+CANLI SİTE: https://serafettin-ariza-staj1.onrender.com
+TELEFONDAN APK İNDİR: https://serafettin-ariza-staj1.onrender.com/indir/android
 
-Ayrıntılı açıklamalar README.md ve docs klasöründedir.
-Projenin tamamı bu ArizaTakip klasöründedir. Unity ve MobilDepo kaynakları değiştirilmedi.
+Canlı site ve APK aynı Atlas veritabanını kullanır. Bilgisayarın açık kalmasına gerek yoktur.
+Ücretsiz Render hizmeti bekleyince uyur; ilk açılış yaklaşık 50 saniye veya daha uzun sürebilir.
+
+CANLI GİRİŞ BİLGİLERİ: .local/CANLI_KULLANICI_BILGILERI.txt
+YEREL GİRİŞ BİLGİLERİ: .local/KULLANICI_BILGILERI.txt
+
+1. İnternet sitesini aç ve canlı hesapla giriş yap.
+2. Android için APK'yı telefona indir ve kur. Android 7.0 ve üzeri.
+3. Yönetici, Personel Ekle bölümünden teknisyen hesabı açabilir.
+4. Arıza oluştur, teknisyeni seç ve Ata düğmesine bas.
+5. Teknisyen yalnızca kendisine atanan kayıtları görür ve durumlarını günceller.
+6. Bilgisayardaki ayrı yerel sürüm için ArizaTakip-Baslat.cmd dosyasına çift tıkla: http://localhost:5000
+
+APK dosyası: artifacts/ArizaTakip-1.0.0.apk
+Kaynak paketi: artifacts/ArizaTakip-Kaynak-Kod.zip
+Ayrıntılar README.md ve docs klasöründedir.

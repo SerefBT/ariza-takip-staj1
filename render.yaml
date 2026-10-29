@@ -12,7 +12,7 @@ services:
       - key: NODE_VERSION
         value: 24.14.1
       - key: TRUST_PROXY
-        value: "1"
+        value: '1'
       - key: MONGO_URI
         sync: false
       - key: JWT_SECRET

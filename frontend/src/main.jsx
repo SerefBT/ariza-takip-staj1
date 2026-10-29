@@ -6,4 +6,8 @@ import '@fontsource/inter/latin-ext-600.css';
 import '@fontsource/inter/latin-ext-700.css';
 import App from './App.jsx';
 import './index.css';
-createRoot(document.getElementById('root')).render(<React.StrictMode><App /></React.StrictMode>);
+createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
