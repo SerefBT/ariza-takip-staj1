@@ -1,0 +1,17 @@
+[
+  {
+    "username": "yonetici",
+    "password": "DemoYonetici2026!",
+    "role": "admin"
+  },
+  {
+    "username": "teknisyen",
+    "password": "DemoTeknisyen2026!",
+    "role": "teknisyen"
+  },
+  {
+    "username": "teknisyen2",
+    "password": "DemoTeknisyen22026!",
+    "role": "teknisyen"
+  }
+]

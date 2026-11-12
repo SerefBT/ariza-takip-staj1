@@ -11,3 +11,13 @@ frontend/android/local.properties
 frontend/android/**/build/
 frontend/android/app/src/main/assets/public/
 .openai/
+
+# Yerel hesaplar, imzalama anahtarları ve kişisel staj belgeleri
+.env.*
+!.env.example
+**/key.properties
+**/*.jks
+**/*.keystore
+docs/staj*/
+docs/pdf-kopyalari/
+GIRIS_BILGILERI.txt

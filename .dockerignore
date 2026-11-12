@@ -9,3 +9,13 @@ artifacts
 !**/.env.example
 frontend/android
 frontend/dist
+
+# Yerel hesaplar, imzalama anahtarları ve kişisel staj belgeleri
+.env.*
+
+**/key.properties
+**/*.jks
+**/*.keystore
+docs/staj*/
+docs/pdf-kopyalari/
+GIRIS_BILGILERI.txt

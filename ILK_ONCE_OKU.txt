@@ -1,21 +1,4 @@
-ARIZA TAKİP — STAJ 1
-
-CANLI SİTE: https://serafettin-ariza-staj1.onrender.com
-TELEFONDAN APK İNDİR: https://serafettin-ariza-staj1.onrender.com/indir/android
-
-Canlı site ve APK aynı Atlas veritabanını kullanır. Bilgisayarın açık kalmasına gerek yoktur.
-Ücretsiz Render hizmeti bekleyince uyur; ilk açılış yaklaşık 50 saniye veya daha uzun sürebilir.
-
-CANLI GİRİŞ BİLGİLERİ: .local/CANLI_KULLANICI_BILGILERI.txt
-YEREL GİRİŞ BİLGİLERİ: .local/KULLANICI_BILGILERI.txt
-
-1. İnternet sitesini aç ve canlı hesapla giriş yap.
-2. Android için APK'yı telefona indir ve kur. Android 7.0 ve üzeri.
-3. Yönetici, Personel Ekle bölümünden teknisyen hesabı açabilir.
-4. Arıza oluştur, teknisyeni seç ve Ata düğmesine bas.
-5. Teknisyen yalnızca kendisine atanan kayıtları görür ve durumlarını günceller.
-6. Bilgisayardaki ayrı yerel sürüm için ArizaTakip-Baslat.cmd dosyasına çift tıkla: http://localhost:5000
-
-APK dosyası: artifacts/ArizaTakip-1.0.0.apk
-Kaynak paketi: artifacts/ArizaTakip-Kaynak-Kod.zip
-Ayrıntılar README.md ve docs klasöründedir.
+ARIZA TAKİP KAYNAK KODU
+Kurulum, test ve Android Studio adımları README.md dosyasındadır.
+Bu depoda canlı hesap bilgisi veya gerçek ortam ayarı yoktur.
+Hazır çevrimdışı CD gösterimi için CD teslim paketindeki 1_KUR_VE_BASLAT.cmd kullanılır.
