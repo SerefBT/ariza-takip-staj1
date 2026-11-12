@@ -32,18 +32,18 @@ New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
 New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
 $state = [ordered]@{ demo = 'ariza-cd-1'; server = $null; mongo = $null }
 function Save-State { $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statePath -Encoding UTF8 }
-function Process-Entry($process) { $process.Refresh(); return @{ pid=$process.Id; exe=$process.Path; started=$process.StartTime.ToUniversalTime().Ticks.ToString() } }
+function Process-Entry($process, [string]$executable) { $process.Refresh(); return @{ pid=$process.Id; exe=[IO.Path]::GetFullPath($executable); started=$process.StartTime.ToUniversalTime().Ticks.ToString() } }
 try {
   $mongoExe = Join-Path $appDir 'runtime\mongod.exe'
   $mongoArgs = '--dbpath "' + $dataDir + '" --port 27031 --bind_ip 127.0.0.1 --logpath "' + (Join-Path $logsDir 'mongodb.log') + '" --logappend'
   $mongoProcess = Start-Process -FilePath $mongoExe -ArgumentList $mongoArgs -WorkingDirectory $appDir -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logsDir 'mongo-out.log') -RedirectStandardError (Join-Path $logsDir 'mongo-error.log')
-  $state.mongo = Process-Entry $mongoProcess; Save-State
+  $state.mongo = Process-Entry $mongoProcess $mongoExe; Save-State
   for ($attempt=0; $attempt -lt 60; $attempt++) { if (Test-Port 27031) { break }; if ($mongoProcess.HasExited) { throw 'CD MongoDB baslatilamadi. gunlukler klasorunu kontrol edin.' }; Start-Sleep -Milliseconds 500 }
   if (!(Test-Port 27031)) { throw 'CD MongoDB beklenen surede hazir olmadi.' }
   $nodeExe = Join-Path $appDir 'runtime\node.exe'
   $nodeArgs = '"' + (Join-Path $appDir 'CDLauncher\demo-server.mjs') + '" "' + $demoHome + '"'
   $nodeProcess = Start-Process -FilePath $nodeExe -ArgumentList $nodeArgs -WorkingDirectory $appDir -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logsDir 'sunucu.log') -RedirectStandardError (Join-Path $logsDir 'sunucu-hata.log')
-  $state.server = Process-Entry $nodeProcess; Save-State
+  $state.server = Process-Entry $nodeProcess $nodeExe; Save-State
   $ready=$false
   for ($attempt=0; $attempt -lt 60; $attempt++) {
     try { $health=Invoke-RestMethod 'http://127.0.0.1:5001/cd-demo/health' -TimeoutSec 1; $ready=$health.demo -eq 'ariza-cd-1' -and $health.success } catch {}
